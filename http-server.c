@@ -8,7 +8,6 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
 #include <netdb.h> //check if allowed to use
 
 static void die(const char *s) { perror(s); exit(1);}
@@ -81,7 +80,7 @@ int main(int argc, char **argv){
 
     //(8) create while loop to manage clients
     while(1){
-        fprintf(stderr, "waiting for client...\n");
+        //fprintf(stderr, "waiting for client...\n");
         clntlen = sizeof(clntaddr);
         //(9) accept clients
         if((clntsock = accept(servsock, (struct sockaddr *) &clntaddr, &clntlen)) < 0)
@@ -97,7 +96,7 @@ int main(int argc, char **argv){
         if((fgets(requestLine, sizeof(requestLine), clnt_input)) == NULL)
             die("getting first line (GET REQUEST) failed");
         //(12) check if GET request is valid
-        fprintf(stderr, "get request: \n%s", buf);
+        //fprintf(stderr, "get request: \n%s", buf);
         char *token_separators = "\t \r\n"; // tab, space, new line 
         char *req_type = strtok(requestLine, token_separators); 
         char *requestURI = strtok(NULL, token_separators);
@@ -106,53 +105,52 @@ int main(int argc, char **argv){
         //(13) Properly set reqeustURI
         strcpy(buf, web_root); //now buffer has web_root. Not checking length because 4096 is plenty long
         strcat(buf, requestURI); //now buffer has full path (i.e ~/html/cs3157/tng/images/ship.jpg)
-         if(buf[strlen(buf)-1] == '/'){ //if final char of URI is '/', add index.html to end
+        if(buf[strlen(buf)-1] == '/'){ //if final char of URI is '/', add index.html to end
             strcat(buf, "index.html");
         }
-        fprintf(stderr, "requestURI: %s\n", requestURI);
-        fprintf(stderr, "path: %s\n", buf);
+
+        //Tester code:
+        //fprintf(stderr, "requestURI: %s\n", requestURI);
+        //fprintf(stderr, "path: %s\n", buf);
+        
+        //(14) status variable
         struct stat status;
-        //(14) assign status
-        //if (stat(buf, &status) == -1){
-        //    fprintf(stderr, "failed to get file status");
-        //}
-        //(15) check for request errors and send appropriate status
+        
+         //(15) check for request errors and send appropriate status
         char status_code[4096];
         if(stat(buf, &status) == -1){ 
-            //fprintf(stderr, "failed to get file status");
-            strcpy(status_code, not_found_code);
+            strcpy(status_code, "404 Not Found");
             send(clntsock, not_found_code, strlen(not_found_code), 0);
         }else if(strcmp(req_type, "GET") != 0){
-            //fprintf(stderr, "Request type mismatch: %s", req_type); //Not GET. Respond with 501 status code
-            strcpy(status_code, not_imp_code);
+            //Not GET. Respond with 501 status code
+            strcpy(status_code, "501 Not Implemented");
             send(clntsock, not_imp_code, strlen(not_imp_code), 0);
         }else if(strstr(requestURI, "..") != NULL){
-            //fprintf(stderr, "URL contains ..: %s\n", requestURI); //URI contains .. Respond with 400 bad request(?)
-            strcpy(status_code, bad_req_code);
+            //URI contains .. Respond with 400 bad request(?)
+            //fprintf(stderr, "contains ..\n");
+            strcpy(status_code, "400 Bad Request");
             send(clntsock, bad_req_code, strlen(bad_req_code), 0);
         }else if(requestURI[0] != '/'){
-            //fprintf(stderr, "URL doesn't start with '/': %s\n", requestURI); //Respond with 400 BAD request
-            strcpy(status_code, bad_req_code);
+            //Respond with 400 BAD request
+            strcpy(status_code, "400 Bad Request");
             send(clntsock, bad_req_code, strlen(bad_req_code), 0);
         }else if((strcmp(httpVersion, "HTTP/1.0") !=0) && (strcmp(httpVersion, "HTTP/1.1")) != 0){ 
             //Respond with 501 status code
-            //fprintf(stderr, "HTTP version mismatch: %s", httpVersion);
-            strcpy(status_code, not_imp_code);
+            strcpy(status_code, "501 Not Implemented");
             send(clntsock, not_imp_code, strlen(not_imp_code), 0);
         }else if(S_ISDIR(status.st_mode)){
-            //fprintf(stderr, "%s is a directory, 403 Forbidden. \n", requestURI);
-            strcpy(status_code, forbid_code);
+            //Respond with 403 Forbidden
+            strcpy(status_code, "403 Forbidden");
             send(clntsock, forbid_code, strlen(forbid_code), 0);
         }else{ //no errors, actually process request.
             //(16) send data over and appropriate status
             FILE *req_file = fopen(buf, "rb"); //open file
-
             if(req_file == NULL){
                 //fprintf(stderr, "404 Not Found, file path error. %s\n", buf);
-                strcpy(status_code, not_found_code);
+                strcpy(status_code, "404 Not Found");
                 send(clntsock, not_found_code, strlen(not_found_code), 0);
             }else{
-                strcpy(status_code, ok_code);
+                strcpy(status_code, "200 OK");
                 send(clntsock, ok_code, strlen(ok_code), 0);
                 uint32_t members_read;
                 while((members_read = fread(buf, 1, sizeof(buf), req_file)) > 0){
@@ -169,11 +167,9 @@ int main(int argc, char **argv){
         fprintf(stderr, "%s \"%s %s %s\" %s\n", 
                 inet_ntoa(clntaddr.sin_addr), req_type, requestURI, httpVersion, status_code); 
         //inet_ntoa converts IP address to readable format
-        //also remember to add the final status code
         fclose(clnt_input);
         close(clntsock);
     }
-
     return 0;
 }
 
