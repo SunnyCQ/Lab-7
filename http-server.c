@@ -112,13 +112,13 @@ int main(int argc, char **argv){
         if((fgets(requestLine, sizeof(requestLine), clnt_input)) == NULL)
             die("getting first line (GET REQUEST) failed");
         //(12) check if GET request is valid
-        //fprintf(stderr, "get request: \n%s", buf);
+        //fprintf(stderr, "get request: \n%s", requestLine);
         char *token_separators = "\t \r\n"; // tab, space, new line 
         char *req_type = strtok(requestLine, token_separators); 
         char *requestURI = strtok(NULL, token_separators);
         char *httpVersion = strtok(NULL, token_separators);
 
-        //(12.5) Hard coded submit form for Part 2b.
+        //(12.5) Hard coded submit form & tables for Part 2b.
         const char *form = 
             "<h1>mdb-lookup</h1>\n" 
             "<p>\n"
@@ -145,33 +145,37 @@ int main(int argc, char **argv){
 
         //status code variable
         char status_code[4096];
-        //check if its mdb-lookup or normal webpage:
-        if(strncmp(requestURI, "/mdb-lookup", 11) == 0){
+        //(13)check if its mdb-lookup or normal webpage:
+        if(strcmp(requestURI, "/mdb-lookup") == 0){ //is pure /mdb-lookup-page
+            strcpy(status_code, "200 OK");
+            send(clntsock, ok_code, strlen(ok_code), 0);
+            send(clntsock, form, strlen(form), 0);
+        }else if(strncmp(requestURI, "/mdb-lookup", 11) == 0){
+            //(13.1) send OK status because /mdb-lookup should always work no matter what
             strcpy(status_code, "200 OK");
             send(clntsock, ok_code, strlen(ok_code), 0);
             send(clntsock, form, strlen(form), 0);
 
+            //(13.2) check if keyword is empty (print everything)
             if(strcmp(requestURI, "/mdb-lookup?key=") == 0){ //no keyword, print all
-                fprintf(stderr, "NONONONONO");
                 send(mdbsock, "\n", strlen("\n"), 0); //send newline request (print all)
                 send(clntsock, table_start, strlen(table_start), 0);
-                //FILE *mdb_fp = fdopen(mdbsock, "rb");
+                //(13.3) print out all the entries in while loop
                 while(strcmp(fgets(buf, sizeof(buf), mdb_fp), "\n")){
                     send(clntsock, entry_start, strlen(entry_start), 0);
                     send(clntsock, buf, strlen(buf), 0);
                     send(clntsock, entry_end, strlen(entry_end), 0);
                 }
                 send(clntsock, table_end, strlen(table_end), 0);
-                //fclose(mdb_fp);
+            //(13.4) keyword is not empty, extract and send keyword
             }else if(strncmp(requestURI, "/mdb-lookup?key=", 16) == 0){ //yes keyword
                 char *keyword = strrchr(requestURI, '='); //extract =keyword
-                keyword++; //increment past = sign
-                char *keyword_w_nl = strcat(keyword, "\n");
-                fprintf(stderr, "keyword: %s\n", keyword);
-                
-                send(mdbsock, keyword_w_nl, strlen(keyword_w_nl), 0);
+                keyword++; //increment past equals(=) sign
+                //send keyword
+                send(mdbsock, keyword, strlen(keyword), 0);
+                send(mdbsock, "\n", strlen("\n"), 0);
                 send(clntsock, table_start, strlen(table_start), 0);
-                
+                //(13.5) print out all the entries in a while loop
                 while(strcmp(fgets(buf, sizeof(buf), mdb_fp), "\n")){
                     send(clntsock, entry_start, strlen(entry_start), 0);
                     send(clntsock, buf, strlen(buf), 0);
@@ -179,32 +183,8 @@ int main(int argc, char **argv){
                 }
                 send(clntsock, table_end, strlen(table_end), 0);
             }
-/*
-        }else if(strcmp(requestURI, "/mdb-lookup?key=") == 0){ 
-            //lookup part 2b. Accounts for both cases of either initial lookup or no keyword (print everything)
-            strcpy(status_code, "200 OK");
-            send(clntsock, ok_code, strlen(ok_code), 0);
-            send(clntsock, form, strlen(form), 0);
-
-            //(Part 12.6) send only newline to get back all the results
-            send(mdbsock, "\n", strlen("\n"), 0);
-            //how do i receive all the data? File pointer fgets()? recv()? i think we use fgets()
-            FILE *mdb_fp = fdopen(mdbsock, "rb");
-            while(fgets(buf, sizeof(buf), mdb_fp)){
-                send(clntsock, )
-
-            }
-            fclose(mdb_fp);
-
-        }else if (strncmp(requestURI, "/mdb-lookup?key=", 16) == 0){//compare only first 16 letters
-            strcpy(status_code, "200 OK");
-            send(clntsock, ok_code, strlen(ok_code), 0);
-            send(clntsock, form, strlen(form), 0);
-            send(clntsock, "Hello", strlen("Hello"), 0);
-            //form and table
-*/
         }else{ //any other case
-            //(13) Properly set reqeustURI
+            //(14) Properly set reqeustURI
             strcpy(buf, web_root); //now buffer has web_root. Not checking length because 4096 is plenty long
             strcat(buf, requestURI); //now buffer has full path (i.e ~/html/cs3157/tng/images/ship.jpg)
             if(buf[strlen(buf)-1] == '/'){ //if final char of URI is '/', add index.html to end
@@ -212,14 +192,13 @@ int main(int argc, char **argv){
             }
 
             //Tester code:
-            fprintf(stderr, "requestURI: %s\n", requestURI);
+            //fprintf(stderr, "requestURI: %s\n", requestURI);
             //fprintf(stderr, "path: %s\n", buf);
             
-            //(14) status variable
+            //(15) status variable
             struct stat status;
             
-            //(15) check for request errors and send appropriate status
-            //char status_code[4096];
+            //(16) check for request errors and send appropriate status
             if(stat(buf, &status) == -1){ 
                 strcpy(status_code, "404 Not Found");
                 send(clntsock, not_found_code, strlen(not_found_code), 0);
@@ -245,7 +224,7 @@ int main(int argc, char **argv){
                 strcpy(status_code, "403 Forbidden");
                 send(clntsock, forbid_code, strlen(forbid_code), 0);
             }else{ //no errors, actually process request.
-                //(16) send data over and appropriate status
+                //(17) send data over and appropriate status
                 FILE *req_file = fopen(buf, "rb"); //open file
                 if(req_file == NULL){
                     //fprintf(stderr, "404 Not Found, file path error. %s\n", buf);
@@ -263,13 +242,18 @@ int main(int argc, char **argv){
                 fclose(req_file); //does nothing if send_file is NULL
             }
         }
-        //(17) skip over all the headers so we can process next GET request
+        //(18) skip over all the headers so we can process next GET request
         while((fgets(buf, sizeof(buf), clnt_input) != NULL) && (strcmp(buf, "\r\n")) != 0); 
 
-        //(18) print out information on client (i.e 128.59.177.106 "GET /tng/images/crew.jpg HTTP/1.1" 200 OK)
+        //(19)If requestURI ends with newline, remove it and set to NULL terminator
+        if(requestURI[strlen(requestURI)-1] == '\n')
+            requestURI[strlen(requestURI)-1] = '\0';
+
+        //(20) print out information on client (i.e 128.59.177.106 "GET /tng/images/crew.jpg HTTP/1.1" 200 OK)
         fprintf(stderr, "%s \"%s %s %s\" %s\n", 
                 inet_ntoa(clntaddr.sin_addr), req_type, requestURI, httpVersion, status_code); 
         //inet_ntoa converts IP address to readable format
+        //(21)close client connections
         fclose(clnt_input);
         close(clntsock);
     }
