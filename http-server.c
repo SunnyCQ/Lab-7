@@ -156,21 +156,7 @@ int main(int argc, char **argv){
             send(clntsock, ok_code, strlen(ok_code), 0);
             send(clntsock, form, strlen(form), 0);
 
-            //(13.2) check if keyword is empty (print everything)
-            /*
-            if(strcmp(requestURI, "/mdb-lookup?key=") == 0){ //no keyword, print all
-                send(mdbsock, "\n", strlen("\n"), 0); //send newline request (print all)
-                send(clntsock, table_start, strlen(table_start), 0);
-                //(13.3) print out all the entries in while loop
-                while(strcmp(fgets(buf, sizeof(buf), mdb_fp), "\n")){
-                    send(clntsock, entry_start, strlen(entry_start), 0);
-                    send(clntsock, buf, strlen(buf), 0);
-                    send(clntsock, entry_end, strlen(entry_end), 0);
-                }
-                send(clntsock, table_end, strlen(table_end), 0);
             //(13.4) keyword is not empty, extract and send keyword
-            }else
-               */ 
             if(strncmp(requestURI, "/mdb-lookup?key=", 16) == 0){ //yes keyword
                 char *keyword = strrchr(requestURI, '='); //extract =keyword
                 keyword++; //increment past equals(=) sign
@@ -194,10 +180,6 @@ int main(int argc, char **argv){
                 strcat(buf, "index.html");
             }
 
-            //Tester code:
-            //fprintf(stderr, "requestURI: %s\n", requestURI);
-            //fprintf(stderr, "path: %s\n", buf);
-            
             //(15) status variable
             struct stat status;
             
