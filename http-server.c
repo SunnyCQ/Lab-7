@@ -199,18 +199,19 @@ int main(int argc, char **argv){
             struct stat status;
             
             //(16) check for request errors and send appropriate status
-            if(stat(buf, &status) == -1){ 
+            
+            if(strstr(requestURI, "..") != NULL){
+                //URI contains .. Respond with 400 bad request(?)
+                //fprintf(stderr, "contains ..\n");
+                strcpy(status_code, "400 Bad Request");
+                send(clntsock, bad_req_code, strlen(bad_req_code), 0);
+            }else if(stat(buf, &status) == -1){ 
                 strcpy(status_code, "404 Not Found");
                 send(clntsock, not_found_code, strlen(not_found_code), 0);
             }else if(strcmp(req_type, "GET") != 0){
                 //Not GET. Respond with 501 status code
                 strcpy(status_code, "501 Not Implemented");
                 send(clntsock, not_imp_code, strlen(not_imp_code), 0);
-            }else if(strstr(requestURI, "..") != NULL){
-                //URI contains .. Respond with 400 bad request(?)
-                //fprintf(stderr, "contains ..\n");
-                strcpy(status_code, "400 Bad Request");
-                send(clntsock, bad_req_code, strlen(bad_req_code), 0);
             }else if(requestURI[0] != '/'){
                 //Respond with 400 BAD request
                 strcpy(status_code, "400 Bad Request");
