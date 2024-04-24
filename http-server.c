@@ -151,12 +151,13 @@ int main(int argc, char **argv){
             send(clntsock, ok_code, strlen(ok_code), 0);
             send(clntsock, form, strlen(form), 0);
         }else if(strncmp(requestURI, "/mdb-lookup", 11) == 0){
-            //(13.1) send OK status because /mdb-lookup should always work no matter what
+            //(13.1) send OK status because /mdb-lookup should always work no matter what 
             strcpy(status_code, "200 OK");
             send(clntsock, ok_code, strlen(ok_code), 0);
             send(clntsock, form, strlen(form), 0);
 
             //(13.2) check if keyword is empty (print everything)
+            /*
             if(strcmp(requestURI, "/mdb-lookup?key=") == 0){ //no keyword, print all
                 send(mdbsock, "\n", strlen("\n"), 0); //send newline request (print all)
                 send(clntsock, table_start, strlen(table_start), 0);
@@ -168,7 +169,9 @@ int main(int argc, char **argv){
                 }
                 send(clntsock, table_end, strlen(table_end), 0);
             //(13.4) keyword is not empty, extract and send keyword
-            }else if(strncmp(requestURI, "/mdb-lookup?key=", 16) == 0){ //yes keyword
+            }else
+               */ 
+            if(strncmp(requestURI, "/mdb-lookup?key=", 16) == 0){ //yes keyword
                 char *keyword = strrchr(requestURI, '='); //extract =keyword
                 keyword++; //increment past equals(=) sign
                 //send keyword
@@ -202,7 +205,6 @@ int main(int argc, char **argv){
             
             if(strstr(requestURI, "..") != NULL){
                 //URI contains .. Respond with 400 bad request(?)
-                //fprintf(stderr, "contains ..\n");
                 strcpy(status_code, "400 Bad Request");
                 send(clntsock, bad_req_code, strlen(bad_req_code), 0);
             }else if(stat(buf, &status) == -1){ 
