@@ -38,9 +38,11 @@ int main(int argc, char **argv){
     mdbaddr.sin_addr.s_addr = inet_addr(mdb_lookup_host);
     mdbaddr.sin_port = htons(mdb_lookup_port);
 
-    //(3.5) Estalbish TCP connection with mdb-lookup-host
+    //(3.5)Establish TCP connection with mdb-lookup-host
     if (connect(mdbsock, (struct sockaddr *) &mdbaddr, sizeof(mdbaddr)) < 0)
-       die("connect failed"); 
+       die("connect failed");
+    //(3.6)Create read fp to mdb-lookup-host 
+    FILE *mdb_fp = fdopen(mdbsock, "rb");
 
     //(4) create listening socket (server socket)
     int servsock;
@@ -127,19 +129,19 @@ int main(int argc, char **argv){
             "<p>\n";
 
         const char *table_start = 
-            "<p>"
-            "<table border=\"\">"
-            "<tbody>";
+            "<p>\n"
+            "<table border=\"\">\n"
+            "<tbody>\n";
         const char *table_end = 
-            "</tbody>"
-            "</table>"
-            "</p>";
+            "</tbody>\n"
+            "</table>\n"
+            "</p>\n";
         const char *entry_start = 
-            "<tr>"
-            "<td>";
+            "<tr>\n"
+            "<td>\n";
         const char *entry_end = 
-            "</td>"
-            "</tr>";
+            "</td>\n"
+            "</tr>\n";
 
         //status code variable
         char status_code[4096];
@@ -150,31 +152,32 @@ int main(int argc, char **argv){
             send(clntsock, form, strlen(form), 0);
 
             if(strcmp(requestURI, "/mdb-lookup?key=") == 0){ //no keyword, print all
+                fprintf(stderr, "NONONONONO");
                 send(mdbsock, "\n", strlen("\n"), 0); //send newline request (print all)
                 send(clntsock, table_start, strlen(table_start), 0);
-                FILE *mdb_fp = fdopen(mdbsock, "rb");
+                //FILE *mdb_fp = fdopen(mdbsock, "rb");
                 while(strcmp(fgets(buf, sizeof(buf), mdb_fp), "\n")){
                     send(clntsock, entry_start, strlen(entry_start), 0);
                     send(clntsock, buf, strlen(buf), 0);
                     send(clntsock, entry_end, strlen(entry_end), 0);
                 }
                 send(clntsock, table_end, strlen(table_end), 0);
-                fclose(mdb_fp);
-            }else if(strncmp(requestURI, "mdb-lookup?key=", 16) == 0){ //yes keyword
+                //fclose(mdb_fp);
+            }else if(strncmp(requestURI, "/mdb-lookup?key=", 16) == 0){ //yes keyword
                 char *keyword = strrchr(requestURI, '='); //extract =keyword
                 keyword++; //increment past = sign
                 char *keyword_w_nl = strcat(keyword, "\n");
-                send(mdbsock, keyword_w_nl, strlen(buf), 0); //send keyword with \n
-                //send(mdbsock, "\n", strlen("\n"), 0); //end request with \n
+                fprintf(stderr, "keyword: %s\n", keyword);
+                
+                send(mdbsock, keyword_w_nl, strlen(keyword_w_nl), 0);
                 send(clntsock, table_start, strlen(table_start), 0);
-                FILE *mdb_fp = fdopen(mdbsock, "rb");
+                
                 while(strcmp(fgets(buf, sizeof(buf), mdb_fp), "\n")){
                     send(clntsock, entry_start, strlen(entry_start), 0);
                     send(clntsock, buf, strlen(buf), 0);
                     send(clntsock, entry_end, strlen(entry_end), 0);
                 }
                 send(clntsock, table_end, strlen(table_end), 0);
-                fclose(mdb_fp);
             }
 /*
         }else if(strcmp(requestURI, "/mdb-lookup?key=") == 0){ 
